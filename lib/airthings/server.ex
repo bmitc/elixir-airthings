@@ -13,13 +13,31 @@ defmodule Airthings.Server do
           client: Tesla.Client.t()
         }
 
+  ############################################################
+  #### Public API ############################################
+  ############################################################
+
+  @doc """
+  Start an Airthings server. The server will automatically handle all token
+  refreshing and authentication using the provided client ID and secret. Use
+  the PID to call the request functions to retrieve data.
+  """
+  @spec start_link(String.t(), String.t()) :: GenServer.on_start()
   def start_link(client_id, client_secret) do
     GenServer.start_link(__MODULE__, [client_id, client_secret])
   end
 
+  @doc """
+  Gets all devices associated with the client ID
+  """
+  @spec get_devices(pid) :: {:ok, [Device.t()]} | {:error, any} | any
   def get_devices(pid) do
     GenServer.call(pid, :get_devices)
   end
+
+  ############################################################
+  #### GenServer callbacks ###################################
+  ############################################################
 
   @impl GenServer
   def init([client_id, client_secret]) do
@@ -60,6 +78,10 @@ defmodule Airthings.Server do
     {:reply, response, state}
   end
 
+  ############################################################
+  #### Private functions #####################################
+  ############################################################
+
   # Determines if the request should be retried due to the token
   # being expired, which is determined by receive an status response
   # code of 401. Although the token is periodically checked, this hedges
@@ -89,11 +111,11 @@ defmodule Airthings.Server do
     time_elapsed_s = Time.diff(time_now, token_created, :second)
     token_about_to_expire? = time_elapsed_s >= token_duration_s * 0.9
 
-      if token_about_to_expire? do
-        refresh_token(state)
-      else
-        state
-      end
+    if token_about_to_expire? do
+      refresh_token(state)
+    else
+      state
+    end
   end
 
   # Schedules an internal process message to check on the token's state
