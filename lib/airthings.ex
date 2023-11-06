@@ -25,9 +25,19 @@ defmodule Airthings do
   """
   @spec new(String.t(), String.t()) :: Tesla.Client.t()
   def new(client_id, client_secret) do
-    Tesla.client([
-      {Tesla.Middleware.BearerAuth, token: get_token(client_id, client_secret)}
-    ])
+    {client, _token} = new(client_id, client_secret, return_token: true)
+    client
+  end
+
+  def new(client_id, client_secret, return_token: true) do
+    {:ok, token} = get_token(client_id, client_secret)
+
+    client =
+      Tesla.client([
+        {Tesla.Middleware.BearerAuth, token: token.token}
+      ])
+
+    {client, token}
   end
 
   @spec get_token(String.t(), String.t()) :: {:ok, Token.t()} | {:error, any} | any
@@ -75,6 +85,22 @@ defmodule Airthings do
   def get_latest_samples(client, id) when is_integer(id) and id >= 0 do
     with {:ok, %{status: 200} = response} <- get(client, "/devices/#{id}/latest-samples") do
       {:ok, Samples.parse(response.body["data"])}
+    else
+      {:ok, error} -> {:error, error}
+      error -> error
+    end
+  end
+
+  @doc """
+  This get function is just a simple passthrough of the response for the given endpoint. This is useful
+  for when there's an endpoint that doesn't have a bespoke function created for it or if a user wants
+  to see the entire response returned.
+  """
+  @spec get_passthrough(Tesla.Client.t(), String.t()) ::
+          {:ok, Tesla.Env.t()} | {:error, any} | any
+  def get_passthrough(client, endpoint) when is_binary(endpoint) do
+    with {:ok, %{status: 200} = response} <- get(client, endpoint) do
+      {:ok, response}
     else
       {:ok, error} -> {:error, error}
       error -> error
