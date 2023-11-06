@@ -1,4 +1,6 @@
 defmodule Airthings.Samples do
+  alias Airthings.Utilities
+
   defstruct [
     :battery,
     :co2,
@@ -33,34 +35,12 @@ defmodule Airthings.Samples do
     samples
     |> Map.new(fn {key, value} -> {String.to_atom(key), value} end)
     |> Map.delete(:relayDeviceType)
-    |> transform(:radonShortTermAvg, fn _ -> :radon end, &Function.identity/1)
-    |> transform(:temp, fn _ -> :temperature end, &Function.identity/1)
-    |> transform(:time, fn _ -> :datetime end, fn time ->
+    |> Utilities.transform(:radonShortTermAvg, fn _ -> :radon end, &Function.identity/1)
+    |> Utilities.transform(:temp, fn _ -> :temperature end, &Function.identity/1)
+    |> Utilities.transform(:time, fn _ -> :datetime end, fn time ->
       {:ok, datetime} = DateTime.from_unix(time)
       datetime
     end)
-    |> to_struct(__MODULE__)
-  end
-
-  @spec transform(map, Map.key(), (any -> any), (any -> any)) :: map
-  def transform(map, key, key_update_fn, value_update_fn) do
-    if Map.has_key?(map, key) do
-      new_value =
-        map
-        |> Map.get(key)
-        |> value_update_fn.()
-
-      new_key = key_update_fn.(key)
-
-      map
-      |> Map.delete(key)
-      |> Map.put(new_key, new_value)
-    else
-      map
-    end
-  end
-
-  def to_struct(map, module) do
-    struct(module, map)
+    |> Utilities.to_struct(__MODULE__)
   end
 end
