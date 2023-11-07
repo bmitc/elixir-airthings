@@ -92,12 +92,12 @@ defmodule Airthings.Client do
 
   @spec get_latest_samples(Tesla.Client.t(), Device.t() | non_neg_integer) ::
           {:ok, Samples.t()} | {:error, any} | any
-  def get_latest_samples(client, %Device{id: id} = device) when is_map(device) do
+  def get_latest_samples(client, %Device{id: id}) do
     get_latest_samples(client, id)
   end
 
-  def get_latest_samples(client, id) when is_integer(id) and id >= 0 do
-    case get(client, "/devices/#{id}/latest-samples") do
+  def get_latest_samples(client, device_id) when is_integer(device_id) and device_id >= 0 do
+    case get(client, "/devices/#{device_id}/latest-samples") do
       {:ok, %{status: 200} = response} -> {:ok, Samples.parse(response.body["data"])}
       {:ok, error} -> {:error, error}
       error -> error
@@ -105,15 +105,14 @@ defmodule Airthings.Client do
   end
 
   @doc """
-  This get function is just a simple passthrough of the response for the given endpoint. This is useful
-  for when there's an endpoint that doesn't have a bespoke function created for it or if a user wants
-  to see the entire response returned.
+  This get function is just a simple passthrough of the response's body for the given endpoint. This is
+  useful for when there's an endpoint that doesn't have a bespoke function created for it or if a user
+  wants to see the entire response returned.
   """
-  @spec get_passthrough(Tesla.Client.t(), String.t()) ::
-          {:ok, Tesla.Env.t()} | {:error, any} | any
+  @spec get_passthrough(Tesla.Client.t(), String.t()) :: {:ok, map} | {:error, any} | any
   def get_passthrough(client, endpoint) when is_binary(endpoint) do
     case get(client, endpoint) do
-      {:ok, %{status: 200} = response} -> {:ok, response}
+      {:ok, %{status: 200} = response} -> {:ok, response.body}
       {:ok, error} -> {:error, error}
       error -> error
     end

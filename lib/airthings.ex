@@ -9,6 +9,8 @@ defmodule Airthings do
 
   alias Airthings.Client
   alias Airthings.Device
+  alias Airthings.Location
+  alias Airthings.Samples
   alias Airthings.Token
 
   @enforce_keys [:client_id, :client_secret, :token, :client]
@@ -41,6 +43,32 @@ defmodule Airthings do
   @spec get_devices(pid) :: {:ok, [Device.t()]} | {:error, any} | any
   def get_devices(pid) do
     GenServer.call(pid, :get_devices)
+  end
+
+  @doc """
+  Gets all locations associated with the client ID
+  """
+  @spec get_locations(pid) :: {:ok, [Location.t()]} | {:error, any} | any
+  def get_locations(pid) do
+    GenServer.call(pid, :get_locations)
+  end
+
+  @doc """
+  Gets latest samples for the given device
+  """
+  @spec get_latest_samples(pid, Device.t() | non_neg_integer) ::
+          {:ok, Samples.t()} | {:error, any} | any
+  def get_latest_samples(pid, %Device{id: id}) do
+    GenServer.call(pid, {:get_latest_samples, id})
+  end
+
+  def get_latest_samples(pid, device_id) when is_integer(device_id) and device_id >= 0 do
+    GenServer.call(pid, {:get_latest_samples, device_id})
+  end
+
+  @spec get_passthrough(pid, String.t()) :: {:ok, map} | {:error, any} | any
+  def get_passthrough(pid, endpoint) when is_binary(endpoint) do
+    GenServer.call(pid, {:get_passthrough, endpoint})
   end
 
   ############################################################
@@ -77,6 +105,54 @@ defmodule Airthings do
       if should_retry?(response) do
         state = refresh_token(state)
         response = Client.get_devices(state.client)
+        {state, response}
+      else
+        {state, response}
+      end
+
+    {:reply, response, state}
+  end
+
+  @impl GenServer
+  def handle_call(:get_locations, _from, state) do
+    response = Client.get_locations(state.client)
+
+    {state, response} =
+      if should_retry?(response) do
+        state = refresh_token(state)
+        response = Client.get_locations(state.client)
+        {state, response}
+      else
+        {state, response}
+      end
+
+    {:reply, response, state}
+  end
+
+  @impl GenServer
+  def handle_call({:get_latest_samples, device_id}, _from, state) do
+    response = Client.get_latest_samples(state.client, device_id)
+
+    {state, response} =
+      if should_retry?(response) do
+        state = refresh_token(state)
+        response = Client.get_latest_samples(state.client, device_id)
+        {state, response}
+      else
+        {state, response}
+      end
+
+    {:reply, response, state}
+  end
+
+  @impl GenServer
+  def handle_call({:get_passthrough, endpoint}, _from, state) do
+    response = Client.get_passthrough(state.client, endpoint)
+
+    {state, response} =
+      if should_retry?(response) do
+        state = refresh_token(state)
+        response = Client.get_passthrough(state.client, endpoint)
         {state, response}
       else
         {state, response}
