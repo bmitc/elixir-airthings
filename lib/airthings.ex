@@ -2,17 +2,18 @@ defmodule Airthings do
   use GenServer
 
   alias Airthings.Client
+  alias Airthings.Device
   alias Airthings.Token
 
   @enforce_keys [:client_id, :client_secret, :token, :client]
   defstruct @enforce_keys
 
   @typep t() :: %__MODULE__{
-          client_id: String.t(),
-          client_secret: String.t(),
-          token: Token.t(),
-          client: Tesla.Client.t()
-        }
+           client_id: String.t(),
+           client_secret: String.t(),
+           token: Token.t(),
+           client: Tesla.Client.t()
+         }
 
   ############################################################
   #### Public API ############################################
