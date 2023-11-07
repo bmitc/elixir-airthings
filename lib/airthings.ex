@@ -16,6 +16,7 @@ defmodule Airthings do
   @enforce_keys [:client_id, :client_secret, :token, :client]
   defstruct @enforce_keys
 
+  # Represents the internal state of the Airthings GenServer
   @typep t() :: %__MODULE__{
            client_id: String.t(),
            client_secret: String.t(),
@@ -54,7 +55,7 @@ defmodule Airthings do
   end
 
   @doc """
-  Gets latest samples for the given device
+  Gets latest samples for the given device or device ID
   """
   @spec get_latest_samples(pid, Device.t() | non_neg_integer) ::
           {:ok, Samples.t()} | {:error, any} | any
@@ -86,6 +87,9 @@ defmodule Airthings do
       client: client
     }
 
+    # Schedule the periodic token check that will handle refreshing a token
+    # outside of a request being made. All requests will also retry one time
+    # after first refreshing the token if the token is expired.
     schedule_token_check()
 
     {:ok, state}
@@ -98,61 +102,18 @@ defmodule Airthings do
   end
 
   @impl GenServer
-  def handle_call(:get_devices, _from, state) do
-    response = Client.get_devices(state.client)
+  def handle_call(request, _from, state) do
+    response = get_response(request, state)
 
+    # If the request failed due to an expired token, the request is retried
+    # one time after the token is refreshed.
     {state, response} =
       if should_retry?(response) do
+        # Refresh the token by getting a new one
         state = refresh_token(state)
-        response = Client.get_devices(state.client)
-        {state, response}
-      else
-        {state, response}
-      end
 
-    {:reply, response, state}
-  end
-
-  @impl GenServer
-  def handle_call(:get_locations, _from, state) do
-    response = Client.get_locations(state.client)
-
-    {state, response} =
-      if should_retry?(response) do
-        state = refresh_token(state)
-        response = Client.get_locations(state.client)
-        {state, response}
-      else
-        {state, response}
-      end
-
-    {:reply, response, state}
-  end
-
-  @impl GenServer
-  def handle_call({:get_latest_samples, device_id}, _from, state) do
-    response = Client.get_latest_samples(state.client, device_id)
-
-    {state, response} =
-      if should_retry?(response) do
-        state = refresh_token(state)
-        response = Client.get_latest_samples(state.client, device_id)
-        {state, response}
-      else
-        {state, response}
-      end
-
-    {:reply, response, state}
-  end
-
-  @impl GenServer
-  def handle_call({:get_passthrough, endpoint}, _from, state) do
-    response = Client.get_passthrough(state.client, endpoint)
-
-    {state, response} =
-      if should_retry?(response) do
-        state = refresh_token(state)
-        response = Client.get_passthrough(state.client, endpoint)
+        # Retry the request
+        response = get_response(request, state)
         {state, response}
       else
         {state, response}
@@ -164,6 +125,19 @@ defmodule Airthings do
   ############################################################
   #### Private functions #####################################
   ############################################################
+
+  # Handles getting the response for the given request. This allows the `handle_call`
+  # function to be made completely generic and independent of the specific request
+  # and its specific response.
+  @spec get_response(request :: any, __MODULE__.t()) :: any
+  defp get_response(:get_devices, state), do: Client.get_devices(state.client)
+  defp get_response(:get_locations, state), do: Client.get_locations(state.client)
+
+  defp get_response({:get_latest_samples, device_id}, state),
+    do: Client.get_latest_samples(state.client, device_id)
+
+  defp get_response({:get_passthrough, endpoint}, state),
+    do: Client.get_passthrough(state.client, endpoint)
 
   # Determines if the request should be retried due to the token
   # being expired, which is determined by receive an status response
