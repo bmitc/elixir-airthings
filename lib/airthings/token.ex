@@ -43,6 +43,6 @@ defmodule Airthings.Token do
     time_now = DateTime.utc_now(:second)
 
     time_elapsed_s = Time.diff(time_now, token.created, :second)
-    token_about_to_expire? = time_elapsed_s >= token.duration_s * 0.9
+    time_elapsed_s >= token.duration_s * 0.9
   end
 end
