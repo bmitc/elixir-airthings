@@ -99,7 +99,8 @@ defmodule Airthings do
   defp should_retry?({:error, %{status: 401}}), do: true
   defp should_retry?(_), do: false
 
-  # Refreshes the internal token by creating a fresh client
+  # Refreshes the internal token by creating a fresh client, which internally
+  # fetches a new token
   @spec refresh_token(__MODULE__.t()) :: __MODULE__.t()
   defp refresh_token(state) do
     {new_client, new_token} =
@@ -108,18 +109,11 @@ defmodule Airthings do
     %__MODULE__{state | token: new_token, client: new_client}
   end
 
-  # Checks the internal token's state by comparing it's duration to when it
+  # Checks the internal token's state by comparing its duration to when it
   # was created. If it is close to expiring, refresh the token.
   @spec check_token(__MODULE__.t()) :: __MODULE__.t()
   defp check_token(state) do
-    token_duration_s = state.token.duration_s
-    token_created = state.token.created
-    time_now = DateTime.utc_now(:second)
-
-    time_elapsed_s = Time.diff(time_now, token_created, :second)
-    token_about_to_expire? = time_elapsed_s >= token_duration_s * 0.9
-
-    if token_about_to_expire? do
+    if Token.about_to_expire?(state.token) do
       refresh_token(state)
     else
       state
@@ -127,7 +121,10 @@ defmodule Airthings do
   end
 
   # Schedules an internal process message to check on the token's state
-  # every 1 minute
+  # every 1 minute. The period could be calculated based upon the token's
+  # duration, but instead, we just check every minute. If the token expires
+  # within that minute, then there is a retry mechanism. At the time of
+  # writing, the token's duration is 3 hours = 10,800 seconds.
   @spec schedule_token_check() :: reference
   defp schedule_token_check() do
     Process.send_after(self(), :check_token, :timer.minutes(1))
