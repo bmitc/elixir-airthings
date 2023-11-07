@@ -59,7 +59,6 @@ defmodule Airthings do
 
   @impl GenServer
   def handle_info(:check_token, state) do
-    IO.inspect(state.token, label: "Checking token")
     schedule_token_check()
     {:noreply, check_token(state)}
   end
