@@ -1,4 +1,8 @@
 defmodule Airthings.Location do
+  @moduledoc """
+  Datatype for an Airthings device location
+  """
+
   @enforce_keys [:id, :name]
   defstruct @enforce_keys
 

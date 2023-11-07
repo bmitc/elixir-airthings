@@ -1,4 +1,8 @@
 defmodule Airthings.Token do
+  @moduledoc """
+  Datatype for an authentication token
+  """
+
   @enforce_keys [:token, :duration_s, :created]
   defstruct @enforce_keys
 

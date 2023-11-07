@@ -1,4 +1,8 @@
 defmodule Airthings.Samples do
+  @moduledoc """
+  Datatype for an Airthings device's latest samples from all of its sensors
+  """
+
   alias Airthings.Utilities
 
   defstruct [

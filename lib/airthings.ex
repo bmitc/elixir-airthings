@@ -1,4 +1,10 @@
 defmodule Airthings do
+  @moduledoc """
+  An Airthings HTTP API client server. Retrieves data, such as devices, locations,
+  latest samples for a device, etc. from the Airthings server for a specific API
+  application. Automatically handles all internal token creation and authentication.
+  """
+
   use GenServer
 
   alias Airthings.Client
@@ -89,6 +95,7 @@ defmodule Airthings do
   # against the case where the periodic check has failed or hasn't run
   # yet after the token expired, which is possible if the token's duration
   # is close to the period of the check token check.
+  @spec should_retry?({:error, Tesla.Env.result()}) :: boolean
   defp should_retry?({:error, %{status: 401}}), do: true
   defp should_retry?(_), do: false
 
@@ -121,6 +128,7 @@ defmodule Airthings do
 
   # Schedules an internal process message to check on the token's state
   # every 1 minute
+  @spec schedule_token_check() :: reference
   defp schedule_token_check() do
     Process.send_after(self(), :check_token, :timer.minutes(1))
   end

@@ -29,6 +29,7 @@ defmodule Airthings.Client do
     client
   end
 
+  @spec new(String.t(), String.t(), keyword) :: {Tesla.Client.t(), Token.t()}
   def new(client_id, client_secret, return_token: true) do
     {:ok, token} = get_token(client_id, client_secret)
 
@@ -42,37 +43,50 @@ defmodule Airthings.Client do
 
   @spec get_token(String.t(), String.t()) :: {:ok, Token.t()} | {:error, any} | any
   def get_token(client_id, client_secret) do
-    with {:ok, %{status: 200} = response} <-
-           post("https://accounts-api.airthings.com/v1/token", %{
-             grant_type: "client_credentials",
-             scope: ["read:device:current_values"],
-             client_id: client_id,
-             client_secret: client_secret
-           }) do
-      {:ok, Token.new(response.body["access_token"], response.body["expires_in"])}
-    else
-      {:ok, error} -> {:error, error}
-      error -> error
+    request_body = %{
+      grant_type: "client_credentials",
+      scope: ["read:device:current_values"],
+      client_id: client_id,
+      client_secret: client_secret
+    }
+
+    case post("https://accounts-api.airthings.com/v1/token", request_body) do
+      {:ok, %{status: 200} = response} ->
+        {:ok, Token.new(response.body["access_token"], response.body["expires_in"])}
+
+      {:ok, error} ->
+        {:error, error}
+
+      error ->
+        error
     end
   end
 
   @spec get_devices(Tesla.Client.t()) :: {:ok, [Device.t()]} | {:error, any} | any
   def get_devices(client) do
-    with {:ok, %{status: 200} = response} <- get(client, "/devices") do
-      {:ok, Enum.map(response.body["devices"], &Device.parse/1)}
-    else
-      {:ok, error} -> {:error, error}
-      error -> error
+    case get(client, "/devices") do
+      {:ok, %{status: 200} = response} ->
+        {:ok, Enum.map(response.body["devices"], &Device.parse/1)}
+
+      {:ok, error} ->
+        {:error, error}
+
+      error ->
+        error
     end
   end
 
   @spec get_locations(Tesla.Client.t()) :: {:ok, [Location.t()]} | {:error, any} | any
   def get_locations(client) do
-    with {:ok, %{status: 200} = response} <- get(client, "/locations") do
-      {:ok, Enum.map(response.body["locations"], &Location.parse/1)}
-    else
-      {:ok, error} -> {:error, error}
-      error -> error
+    case get(client, "/locations") do
+      {:ok, %{status: 200} = response} ->
+        {:ok, Enum.map(response.body["locations"], &Location.parse/1)}
+
+      {:ok, error} ->
+        {:error, error}
+
+      error ->
+        error
     end
   end
 
@@ -83,9 +97,8 @@ defmodule Airthings.Client do
   end
 
   def get_latest_samples(client, id) when is_integer(id) and id >= 0 do
-    with {:ok, %{status: 200} = response} <- get(client, "/devices/#{id}/latest-samples") do
-      {:ok, Samples.parse(response.body["data"])}
-    else
+    case get(client, "/devices/#{id}/latest-samples") do
+      {:ok, %{status: 200} = response} -> {:ok, Samples.parse(response.body["data"])}
       {:ok, error} -> {:error, error}
       error -> error
     end
@@ -99,9 +112,8 @@ defmodule Airthings.Client do
   @spec get_passthrough(Tesla.Client.t(), String.t()) ::
           {:ok, Tesla.Env.t()} | {:error, any} | any
   def get_passthrough(client, endpoint) when is_binary(endpoint) do
-    with {:ok, %{status: 200} = response} <- get(client, endpoint) do
-      {:ok, response}
-    else
+    case get(client, endpoint) do
+      {:ok, %{status: 200} = response} -> {:ok, response}
       {:ok, error} -> {:error, error}
       error -> error
     end

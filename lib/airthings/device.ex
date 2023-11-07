@@ -1,4 +1,8 @@
 defmodule Airthings.Device do
+  @moduledoc """
+  Datatype for an Airthings device
+  """
+
   alias Airthings.Location
 
   @enforce_keys [:type, :id, :location, :product_name, :sensors]

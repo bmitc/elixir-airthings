@@ -1,4 +1,8 @@
 defmodule Airthings.Utilities do
+  @moduledoc """
+  Collection of utility functions
+  """
+
   @doc """
   Transforms a map's key by applying the key update function to the key name and type
   and applying the value update function to the key's value
